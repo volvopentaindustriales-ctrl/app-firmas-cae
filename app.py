@@ -9,8 +9,8 @@ from generador_pdf import generar_pdf_cae_bytes
 app = Flask(__name__)
 
 # --- CONFIGURACIÓN SUPABASE ---
-SUPABASE_URL = "https://TU_PROYECTO.supabase.co"  # Reemplaza con tu URL
-SUPABASE_KEY = "TU_API_KEY_ANON"                 # Reemplaza con tu anon key
+SUPABASE_URL = "https://ovfhnwejascrdivqdjvd.supabase.co"
+SUPABASE_KEY = "sb_publishable_01Wb6l61WUwztzqjON2HuA_-S8_07jp"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 TRABAJADORES = {
@@ -47,7 +47,7 @@ def obtener_mes_actual_texto():
 
 @app.route('/')
 def inicio():
-    return "Servidor de Firmas CAE Activo."
+    return "Servidor de Firmas CAE Activo con Base de Datos Persistente."
 
 @app.route('/firmar/<dni>')
 def firmar_individual(dni):
@@ -71,7 +71,6 @@ def guardar_firma():
     cadena_bruta = f"{dni}-{mes}-{fecha_utc}-{ip_cliente}"
     hash_auditoria = hashlib.sha256(cadena_bruta.encode()).hexdigest()
     
-    # --- GUARDAR DIRECTAMENTE EN SUPABASE ---
     datos_registro = {
         "dni": dni,
         "nombre": nombre,
@@ -92,7 +91,6 @@ def guardar_firma():
 
 @app.route('/ver_firmas')
 def ver_firmas():
-    # --- LEER DESDE SUPABASE ---
     try:
         respuesta = supabase.table("registro_firmas").select("*").order("id", desc=True).execute()
         registros = respuesta.data
@@ -151,7 +149,6 @@ def descargar_pdf():
     except Exception:
         registros_bd = []
 
-    # Adaptar claves de BD al formato que espera el generador de PDF
     lista_para_pdf = []
     for r in registros_bd:
         lista_para_pdf.append({
