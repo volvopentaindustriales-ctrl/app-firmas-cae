@@ -1,106 +1,222 @@
-import os
-import base64
-import hashlib
-import datetime
-from flask import Flask, render_template, request, redirect
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firma de Documentación CAE y Salarios</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            margin: 0; 
+            padding: 15px; 
+            background-color: #f4f6f9; 
+            color: #2d3748;
+        }
+        .container { 
+            max-width: 500px; 
+            margin: 0 auto; 
+            background: #ffffff; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+        }
+        h2 { 
+            color: #1a365d; 
+            text-align: center; 
+            font-size: 18px; 
+            margin-top: 0; 
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+        .info-card { 
+            background: #edf2f7; 
+            padding: 12px 15px; 
+            border-radius: 6px; 
+            margin-bottom: 15px; 
+            font-size: 14px; 
+            line-height: 1.5;
+        }
+        .info-card strong { color: #2b6cb0; }
+        
+        /* Cuadro legal informativo que lee el trabajador */
+        .declaration-box {
+            background-color: #fffaf0;
+            border-left: 4px solid #dd6b20;
+            padding: 12px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            line-height: 1.4;
+            color: #7b341e;
+            border-radius: 0 4px 4px 0;
+        }
+        .declaration-box h4 {
+            margin: 0 0 5px 0;
+            font-size: 14px;
+            color: #c05621;
+        }
 
-app = Flask(__name__)
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            margin-bottom: 15px;
+        }
+        canvas { 
+            border: 2px dashed #cbd5e0; 
+            border-radius: 6px; 
+            width: 100%; 
+            height: 100%; 
+            background: #ffffff; 
+            touch-action: none; 
+            cursor: crosshair; 
+            display: block;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+        .btn { 
+            flex: 1;
+            padding: 12px; 
+            border: none; 
+            border-radius: 6px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            font-size: 14px; 
+            text-align: center;
+        }
+        .btn-submit { background-color: #2f855a; color: white; }
+        .btn-submit:hover { background-color: #276749; }
+        .btn-clear { background-color: #e53e3e; color: white; }
+        .btn-clear:hover { background-color: #c53030; }
+        .legal-notice {
+            font-size: 11px;
+            color: #718096;
+            margin-top: 15px;
+            text-align: justify;
+        }
+    </style>
+</head>
+<body>
 
-# Base de datos simulada de trabajadores (puedes ampliarla)
-TRABAJADORES = {
-    "12345678A": {"nombre": "Juan Pérez López", "dni": "12345678A"},
-    "87654321B": {"nombre": "Ana Gómez Martín", "dni": "87654321B"}
-}
+    <div class="container">
+        <h2>DECLARACIÓN Y REGISTRO DE FIRMA</h2>
+        
+        <div class="info-card">
+            <strong>Trabajador:</strong> {{ nombre }}<br>
+            <strong>DNI:</strong> {{ dni }}
+        </div>
 
-REGISTRO_AUDITORIA = []
+        <!-- TEXTO INFORMATIVO CON EL MES DINÁMICO -->
+        <div class="declaration-box">
+            <h4>Concepto a firmar:</h4>
+            Por la presente, el trabajador abajo firmante declara haber percibido íntegramente el importe correspondiente a los <strong>salarios del mes de {{ mes }}</strong> y liquidación de obligaciones laborales conforme a su convenio de aplicación.
+        </div>
 
-@app.route('/')
-def inicio():
-    return "Servidor de Firmas CAE Activo. Utilice su enlace personal con DNI."
+        <p style="font-size: 13px; font-weight: bold; margin-bottom: 8px;">
+            Dibuje su firma dentro del cuadro con el dedo:
+        </p>
 
-# RUTA NUEVA: Lee el DNI de la URL y abre firmar.html con sus datos
-@app.route('/firmar/<dni>')
-def firmar_individual(dni):
-    trabajador = TRABAJADORES.get(dni, {"nombre": "Trabajador", "dni": dni})
-    return render_template('firmar.html', nombre=trabajador['nombre'], dni=trabajador['dni'])
+        <form id="formFirma" action="/guardar_firma" method="POST">
+            <input type="hidden" name="dni" value="{{ dni }}">
+            <input type="hidden" name="mes" value="{{ mes }}">
+            <input type="hidden" id="imagenFirma" name="imagen_firma">
 
-# RUTA DE GUARDADO: Recibe el formulario de firmar.html
-@app.route('/guardar_firma', methods=['POST'])
-def guardar_firma():
-    dni = request.form.get('dni')
-    firma_base64 = request.form.get('imagen_firma')
-    
-    # Busca el nombre asociado
-    trabajador = TRABAJADORES.get(dni, {"nombre": "Trabajador"})
-    nombre = trabajador.get('nombre')
-    
-    # Captura automática de auditoría IP y tiempo
-    ip_cliente = request.headers.get('X-Forwarded-For', request.remote_addr)
-    user_agent = request.headers.get('User-Agent')
-    fecha_utc = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
-    
-    # Hash de seguridad SHA-256
-    cadena_bruta = f"{dni}-{fecha_utc}-{ip_cliente}"
-    hash_auditoria = hashlib.sha256(cadena_bruta.encode()).hexdigest()
-    
-    REGISTRO_AUDITORIA.append({
-        "dni": dni,
-        "nombre": nombre,
-        "fecha": fecha_utc,
-        "ip": ip_cliente,
-        "user_agent": user_agent,
-        "hash": hash_auditoria,
-        "firma": firma_base64
-    })
-    
-    return "<h2 style='text-align:center; color:green; font-family:sans-serif; margin-top:50px;'>¡Firma registrada con éxito!<br><small style='color:#555;'>Su aceptación y datos de auditoría han sido guardados.</small></h2>"
+            <div class="canvas-container">
+                <canvas id="canvasFirma"></canvas>
+            </div>
 
-@app.route('/ver_firmas')
-def ver_firmas():
-    html = """
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        <title>Registro de Firmas CAE</title>
-        <style>
-            body { font-family: Arial, sans-serif; padding: 20px; background-color: #f8f9fa; }
-            h2 { color: #333; }
-            table { width: 100%; border-collapse: collapse; background: #fff; margin-top: 15px; }
-            th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 14px; }
-            th { background-color: #007bff; color: white; }
-            img { max-height: 50px; border: 1px solid #ccc; background: #fff; }
-        </style>
-    </head>
-    <body>
-        <h2>Registro de Auditoría de Firmas CAE</h2>
-        <table>
-            <tr>
-                <th>Fecha (UTC)</th>
-                <th>Nombre</th>
-                <th>DNI</th>
-                <th>Firma Trazada</th>
-                <th>IP Capturada</th>
-                <th>Hash SHA-256</th>
-            </tr>
-    """
-    for reg in REGISTRO_AUDITORIA:
-        html += f"""
-        <tr>
-            <td>{reg['fecha']}</td>
-            <td>{reg['nombre']}</td>
-            <td>{reg['dni']}</td>
-            <td><img src="{reg.get('firma', '')}" alt="Firma"></td>
-            <td>{reg['ip']}</td>
-            <td><small>{reg['hash'][:20]}...</small></td>
-        </tr>
-        """
-    html += """
-        </table>
-    </body>
-    </html>
-    """
-    return html
+            <div class="btn-group">
+                <button type="button" class="btn btn-clear" onclick="limpiarCanvas()">Borrar</button>
+                <button type="button" class="btn btn-submit" onclick="enviarFirma()">Confirmar y Enviar</button>
+            </div>
+        </form>
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+        <div class="legal-notice">
+            Su dirección IP, sello de tiempo e identificación de dispositivo serán registrados electrónicamente junto a esta firma para garantizar la validez jurídica y la trazabilidad del proceso CAE y de gestión salarial.
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvasFirma');
+        const ctx = canvas.getContext('2d');
+        let firmando = false;
+        let trazadoRealizado = false;
+
+        function inicializarCanvas() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = "#000000";
+        }
+
+        window.addEventListener('load', inicializarCanvas);
+        window.addEventListener('resize', inicializarCanvas);
+
+        function obtenerPosicion(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        canvas.addEventListener('touchstart', (e) => {
+            firmando = true;
+            trazadoRealizado = true;
+            ctx.beginPath();
+            const pos = obtenerPosicion(e);
+            ctx.moveTo(pos.x, pos.y);
+            e.preventDefault();
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            if (firmando) {
+                const pos = obtenerPosicion(e);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', () => firmando = false);
+
+        canvas.addEventListener('mousedown', (e) => {
+            firmando = true;
+            trazadoRealizado = true;
+            ctx.beginPath();
+            const pos = obtenerPosicion(e);
+            ctx.moveTo(pos.x, pos.y);
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (firmando) {
+                const pos = obtenerPosicion(e);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+            }
+        });
+
+        window.addEventListener('mouseup', () => firmando = false);
+
+        function limpiarCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            trazadoRealizado = false;
+        }
+
+        function enviarFirma() {
+            if (!trazadoRealizado) {
+                alert("Por favor, dibuje su firma en el recuadro antes de continuar.");
+                return;
+            }
+            const dataURL = canvas.toDataURL('image/png');
+            document.getElementById('imagenFirma').value = dataURL;
+            document.getElementById('formFirma').submit();
+        }
+    </script>
+</body>
+</html>
