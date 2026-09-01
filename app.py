@@ -90,16 +90,16 @@ def ver_firmas():
         <title>Registro de Firmas CAE</title>
         <style>
             body { font-family: Arial, sans-serif; padding: 20px; background-color: #f8f9fa; }
-            .btn { background-color: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; margin-bottom: 15px; }
-            table { width: 100%; border-collapse: collapse; background: #fff; }
+            table { width: 100%; border-collapse: collapse; background: #fff; margin-top: 15px; }
             th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 14px; }
-            th { background-color: #007bff; color: white; }
+            th { background-color: #0D47A1; color: white; }
             img { max-height: 40px; }
+            .btn { display: inline-block; padding: 10px 20px; background-color: #E65100; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; margin-bottom: 15px; }
         </style>
     </head>
     <body>
         <h2>Registro de Auditoría de Firmas CAE</h2>
-        <a href="/descargar_pdf" class="btn">📥 Descargar PDF Consolidado</a>
+        <a href="/descargar_pdf" class="btn">📄 Descargar PDF Consolidado</a>
         <table>
             <tr>
                 <th>Fecha (UTC)</th>
@@ -128,15 +128,22 @@ def ver_firmas():
 
 @app.route('/descargar_pdf')
 def descargar_pdf():
-    mes = REGISTRO_AUDITORIA[0]['mes'] if REGISTRO_AUDITORIA else obtener_mes_actual_texto()
-    pdf_buffer = generar_pdf_cae_bytes(mes, REGISTRO_AUDITORIA)
+    # Detecta el mes de las firmas o usa el mes actual por defecto sin crash
+    if len(REGISTRO_AUDITORIA) > 0:
+        mes = REGISTRO_AUDITORIA[0].get('mes', obtener_mes_actual_texto())
+    else:
+        mes = obtener_mes_actual_texto()
     
-    return send_file(
-        pdf_buffer,
-        as_attachment=True,
-        download_name=f"Certificado_CAE_Salarios_{mes.replace(' ', '_')}.pdf",
-        mimetype='application/pdf'
-    )
+    try:
+        pdf_buffer = generar_pdf_cae_bytes(mes, REGISTRO_AUDITORIA)
+        return send_file(
+            pdf_buffer,
+            as_attachment=True,
+            download_name=f"Certificado_CAE_Salarios_{mes.replace(' ', '_')}.pdf",
+            mimetype='application/pdf'
+        )
+    except Exception as e:
+        return f"<h3 style='color:red; text-align:center;'>Error al generar el PDF: {str(e)}</h3>"
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
