@@ -39,10 +39,58 @@ def guardar_firma():
         "fecha": fecha_utc,
         "ip": ip_cliente,
         "user_agent": user_agent,
-        "hash": hash_auditoria
+        "hash": hash_auditoria,
+        "firma": firma_base64
     })
     
     return "<h2 style='text-align:center; color:green;'>¡Firma registrada con éxito! Puede cerrar esta pestaña.</h2>"
 
+@app.route('/ver_firmas')
+def ver_firmas():
+    html = """
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <title>Registro de Firmas CAE</title>
+        <style>
+            body { font-family: Arial, sans-serif; padding: 20px; background-color: #f8f9fa; }
+            h2 { color: #333; }
+            table { width: 100%; border-collapse: collapse; background: #fff; margin-top: 15px; }
+            th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 14px; }
+            th { background-color: #007bff; color: white; }
+            img { max-height: 60px; border: 1px solid #ccc; background: #fff; }
+        </style>
+    </head>
+    <body>
+        <h2>Registro de Firmas de Auditoría CAE</h2>
+        <table>
+            <tr>
+                <th>Fecha (UTC)</th>
+                <th>Nombre</th>
+                <th>DNI</th>
+                <th>Firma Trazada</th>
+                <th>IP Capturada</th>
+                <th>Hash SHA-256</th>
+            </tr>
+    """
+    for reg in REGISTRO_AUDITORIA:
+        html += f"""
+            <tr>
+                <td>{reg['fecha']}</td>
+                <td>{reg['nombre']}</td>
+                <td>{reg['dni']}</td>
+                <td><img src="{reg.get('firma', '')}" alt="Firma"></td>
+                <td>{reg['ip']}</td>
+                <td><small>{reg['hash'][:20]}...</small></td>
+            </tr>
+        """
+    html += """
+        </table>
+    </body>
+    </html>
+    """
+    return html
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000) 
+    app.run(host='0.0.0.0', port=5000)
