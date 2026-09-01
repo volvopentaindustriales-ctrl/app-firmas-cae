@@ -56,7 +56,6 @@
             color: #c05621;
         }
 
-        /* Contenedor del lienzo con dimensiones explícitas */
         .canvas-container {
             position: relative;
             width: 100%;
@@ -109,10 +108,10 @@
             <strong>DNI:</strong> {{ dni }}
         </div>
 
-        <!-- TEXTO INFORMATIVO QUE LEE EL TRABAJADOR -->
+        <!-- TEXTO INFORMATIVO CON EL MES DINÁMICO -->
         <div class="declaration-box">
             <h4>Concepto a firmar:</h4>
-            Por la presente, el trabajador abajo firmante declara haber percibido íntegramente el importe correspondiente a los <strong>salarios del mes vencido</strong> y liquidación de obligaciones laborales conforme a su convenio de aplicación.
+            Por la presente, el trabajador abajo firmante declara haber percibido íntegramente el importe correspondiente a los <strong>salarios del mes de {{ mes }}</strong> y liquidación de obligaciones laborales conforme a su convenio de aplicación.
         </div>
 
         <p style="font-size: 13px; font-weight: bold; margin-bottom: 8px;">
@@ -121,6 +120,7 @@
 
         <form id="formFirma" action="/guardar_firma" method="POST">
             <input type="hidden" name="dni" value="{{ dni }}">
+            <input type="hidden" name="mes" value="{{ mes }}">
             <input type="hidden" id="imagenFirma" name="imagen_firma">
 
             <div class="canvas-container">
@@ -147,7 +147,6 @@
         function inicializarCanvas() {
             canvas.width = canvas.offsetWidth;
             canvas.height = canvas.offsetHeight;
-            
             ctx.lineWidth = 2.5;
             ctx.lineCap = 'round';
             ctx.strokeStyle = "#000000";
@@ -166,7 +165,6 @@
             };
         }
 
-        // Eventos táctiles (Móviles)
         canvas.addEventListener('touchstart', (e) => {
             firmando = true;
             trazadoRealizado = true;
@@ -187,7 +185,6 @@
 
         canvas.addEventListener('touchend', () => firmando = false);
 
-        // Eventos de ratón (Ordenador)
         canvas.addEventListener('mousedown', (e) => {
             firmando = true;
             trazadoRealizado = true;
