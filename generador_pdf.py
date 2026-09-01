@@ -33,7 +33,7 @@ def generar_pdf_cae_bytes(mes_firmado, lista_firmas_registradas):
         fontSize=12,
         leading=15,
         textColor=AZUL_SELECON,
-        alignment=0, # Izquierda
+        alignment=0,
         spaceAfter=2
     )
     
@@ -52,26 +52,34 @@ def generar_pdf_cae_bytes(mes_firmado, lista_firmas_registradas):
         fontSize=8.5,
         leading=12,
         textColor=GRIS_TEXTO,
-        alignment=4, # Justificado
+        alignment=4,
         spaceAfter=10
     )
 
-    # --- ENCABEZADO CON LOGO Y TÍTULO ---
-    # Intenta cargar la imagen logo.png
-    ruta_logo = "static/logo.png" if os.path.exists("static/logo.png") else "logo.png"
+    # --- ENCABEZADO CON DETECCIÓN DE LOGO ---
+    posibles_nombres = ["logo.png", "logo.PNG", "logo.jpg", "logo.jpeg", "static/logo.png"]
+    ruta_logo = None
     
-    if os.path.exists(ruta_logo):
-        img_logo = Image(ruta_logo, width=120, height=45)
+    for nombre in posibles_nombres:
+        if os.path.exists(nombre):
+            ruta_logo = nombre
+            break
+
+    if ruta_logo:
+        try:
+            img_logo = Image(ruta_logo, width=130, height=40)
+        except Exception:
+            img_logo = Paragraph("", styles['Normal'])
     else:
-        img_logo = Paragraph("<b>SELECON S.L.</b>", titulo_style)
+        img_logo = Paragraph("", styles['Normal'])
 
     header_text = [
         Paragraph("<b>SELECON, S.L.</b>", titulo_style),
         Paragraph("<b>EL DOMINIO DE LA ENERGÍA</b>", subtitulo_header),
-        Paragraph("<font size=7 color='#7F8C8D'>CERTIFICADO DE CERTIFICACIÓN SALARIAL Y CUMPLIMIENTO CAE</font>", subtitulo_header)
+        Paragraph("<font size=7 color='#7F8C8D'>CERTIFICADO DE OBLIGACIONES SALARIALES Y CUMPLIMIENTO CAE</font>", subtitulo_header)
     ]
 
-    header_table = Table([[header_text, img_logo]], colWidths=[385, 150])
+    header_table = Table([[header_text, img_logo]], colWidths=[370, 165])
     header_table.setStyle(TableStyle([
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
         ('ALIGN', (1,0), (1,0), 'RIGHT'),
