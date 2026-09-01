@@ -2,110 +2,224 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Firma Documento CAE</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firma de Documentación CAE y Salarios</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin: 0;
-            padding: 15px;
-            background-color: #f4f4f9;
+        * { box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            margin: 0; 
+            padding: 15px; 
+            background-color: #f4f6f9; 
+            color: #2d3748;
         }
-        .container {
-            max-width: 500px;
-            margin: 0 auto;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        .container { 
+            max-width: 500px; 
+            margin: 0 auto; 
+            background: #ffffff; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
         }
-        input {
-            width: 90%;
-            padding: 10px;
-            margin: 8px 0;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 16px;
+        h2 { 
+            color: #1a365d; 
+            text-align: center; 
+            font-size: 18px; 
+            margin-top: 0; 
+            margin-bottom: 15px;
+            text-transform: uppercase;
         }
-        canvas {
-            border: 2px dashed #007bff;
-            border-radius: 4px;
-            background-color: #fff;
-            touch-action: none;
+        .info-card { 
+            background: #edf2f7; 
+            padding: 12px 15px; 
+            border-radius: 6px; 
+            margin-bottom: 15px; 
+            font-size: 14px; 
+            line-height: 1.5;
+        }
+        .info-card strong { color: #2b6cb0; }
+        
+        /* Cuadro legal informativo que lee el trabajador */
+        .declaration-box {
+            background-color: #fffaf0;
+            border-left: 4px solid #dd6b20;
+            padding: 12px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            line-height: 1.4;
+            color: #7b341e;
+            border-radius: 0 4px 4px 0;
+        }
+        .declaration-box h4 {
+            margin: 0 0 5px 0;
+            font-size: 14px;
+            color: #c05621;
+        }
+
+        /* Contenedor del lienzo con dimensiones explícitas */
+        .canvas-container {
+            position: relative;
             width: 100%;
             height: 200px;
-            margin-top: 10px;
+            margin-bottom: 15px;
+        }
+        canvas { 
+            border: 2px dashed #cbd5e0; 
+            border-radius: 6px; 
+            width: 100%; 
+            height: 100%; 
+            background: #ffffff; 
+            touch-action: none; 
+            cursor: crosshair; 
+            display: block;
         }
         .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+        .btn { 
+            flex: 1;
+            padding: 12px; 
+            border: none; 
+            border-radius: 6px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            font-size: 14px; 
+            text-align: center;
+        }
+        .btn-submit { background-color: #2f855a; color: white; }
+        .btn-submit:hover { background-color: #276749; }
+        .btn-clear { background-color: #e53e3e; color: white; }
+        .btn-clear:hover { background-color: #c53030; }
+        .legal-notice {
+            font-size: 11px;
+            color: #718096;
             margin-top: 15px;
+            text-align: justify;
         }
-        button {
-            padding: 12px 20px;
-            font-size: 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            margin: 5px;
-        }
-        .btn-submit { background-color: #28a745; color: white; }
-        .btn-clear { background-color: #dc3545; color: white; }
     </style>
 </head>
 <body>
+
     <div class="container">
-        <h2>Firma de Documento CAE</h2>
-        <form id="firmForm" action="/firmar" method="POST">
-            <input type="text" name="nombre" placeholder="Nombre completo" required>
-            <input type="text" name="dni" placeholder="DNI / NIE" required>
-            <input type="hidden" name="firma_img" id="firma_img">
-            
-            <p>Dibuje su firma abajo:</p>
-            <canvas id="canvasFirma"></canvas>
-            
+        <h2>DECLARACIÓN Y REGISTRO DE FIRMA</h2>
+        
+        <div class="info-card">
+            <strong>Trabajador:</strong> {{ nombre }}<br>
+            <strong>DNI:</strong> {{ dni }}
+        </div>
+
+        <!-- TEXTO INFORMATIVO QUE LEE EL TRABAJADOR -->
+        <div class="declaration-box">
+            <h4>Concepto a firmar:</h4>
+            Por la presente, el trabajador abajo firmante declara haber percibido íntegramente el importe correspondiente a los <strong>salarios del mes vencido</strong> y liquidación de obligaciones laborales conforme a su convenio de aplicación.
+        </div>
+
+        <p style="font-size: 13px; font-weight: bold; margin-bottom: 8px;">
+            Dibuje su firma dentro del cuadro con el dedo:
+        </p>
+
+        <form id="formFirma" action="/guardar_firma" method="POST">
+            <input type="hidden" name="dni" value="{{ dni }}">
+            <input type="hidden" id="imagenFirma" name="imagen_firma">
+
+            <div class="canvas-container">
+                <canvas id="canvasFirma"></canvas>
+            </div>
+
             <div class="btn-group">
-                <button type="button" class="btn-clear" id="btnClear">Limpiar</button>
-                <button type="submit" class="btn-submit">Enviar Firma</button>
+                <button type="button" class="btn btn-clear" onclick="limpiarCanvas()">Borrar</button>
+                <button type="button" class="btn btn-submit" onclick="enviarFirma()">Confirmar y Enviar</button>
             </div>
         </form>
+
+        <div class="legal-notice">
+            Su dirección IP, sello de tiempo e identificación de dispositivo serán registrados electrónicamente junto a esta firma para garantizar la validez jurídica y la trazabilidad del proceso CAE y de gestión salarial.
+        </div>
     </div>
 
     <script>
         const canvas = document.getElementById('canvasFirma');
         const ctx = canvas.getContext('2d');
-        let dibujando = false;
+        let firmando = false;
+        let trazadoRealizado = false;
 
-        function ajustarCanvas() {
+        function inicializarCanvas() {
             canvas.width = canvas.offsetWidth;
             canvas.height = canvas.offsetHeight;
-            ctx.lineWidth = 2;
+            
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
             ctx.strokeStyle = "#000000";
         }
-        window.addEventListener('resize', ajustarCanvas);
-        window.addEventListener('load', ajustarCanvas);
+
+        window.addEventListener('load', inicializarCanvas);
+        window.addEventListener('resize', inicializarCanvas);
 
         function obtenerPosicion(e) {
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            return { x: clientX - rect.left, y: clientY - rect.top };
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
         }
 
-        canvas.addEventListener('mousedown', (e) => { dibujando = true; ctx.beginPath(); const pos = obtenerPosicion(e); ctx.moveTo(pos.x, pos.y); });
-        canvas.addEventListener('mousemove', (e) => { if (dibujando) { const pos = obtenerPosicion(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); } });
-        canvas.addEventListener('mouseup', () => dibujando = false);
+        // Eventos táctiles (Móviles)
+        canvas.addEventListener('touchstart', (e) => {
+            firmando = true;
+            trazadoRealizado = true;
+            ctx.beginPath();
+            const pos = obtenerPosicion(e);
+            ctx.moveTo(pos.x, pos.y);
+            e.preventDefault();
+        }, { passive: false });
 
-        canvas.addEventListener('touchstart', (e) => { dibujando = true; ctx.beginPath(); const pos = obtenerPosicion(e); ctx.moveTo(pos.x, pos.y); e.preventDefault(); }, { passive: false });
-        canvas.addEventListener('touchmove', (e) => { if (dibujando) { const pos = obtenerPosicion(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); } e.preventDefault(); }, { passive: false });
-        canvas.addEventListener('touchend', () => dibujando = false);
+        canvas.addEventListener('touchmove', (e) => {
+            if (firmando) {
+                const pos = obtenerPosicion(e);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+                e.preventDefault();
+            }
+        }, { passive: false });
 
-        document.getElementById('btnClear').addEventListener('click', () => {
+        canvas.addEventListener('touchend', () => firmando = false);
+
+        // Eventos de ratón (Ordenador)
+        canvas.addEventListener('mousedown', (e) => {
+            firmando = true;
+            trazadoRealizado = true;
+            ctx.beginPath();
+            const pos = obtenerPosicion(e);
+            ctx.moveTo(pos.x, pos.y);
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (firmando) {
+                const pos = obtenerPosicion(e);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+            }
+        });
+
+        window.addEventListener('mouseup', () => firmando = false);
+
+        function limpiarCanvas() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-        });
+            trazadoRealizado = false;
+        }
 
-        document.getElementById('firmForm').addEventListener('submit', (e) => {
-            document.getElementById('firma_img').value = canvas.toDataURL();
-        });
+        function enviarFirma() {
+            if (!trazadoRealizado) {
+                alert("Por favor, dibuje su firma en el recuadro antes de continuar.");
+                return;
+            }
+            const dataURL = canvas.toDataURL('image/png');
+            document.getElementById('imagenFirma').value = dataURL;
+            document.getElementById('formFirma').submit();
+        }
     </script>
 </body>
 </html>
