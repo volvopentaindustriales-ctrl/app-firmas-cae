@@ -23,8 +23,8 @@ def generar_pdf_cae_bytes(mes_firmado, lista_firmas_registradas):
     titulo_style = ParagraphStyle(
         'TituloEmpresa',
         parent=styles['Heading1'],
-        fontSize=14,
-        leading=16,
+        fontSize=13,
+        leading=15,
         textColor=colors.HexColor('#1A365D'),
         alignment=1,
         spaceAfter=10
@@ -33,11 +33,11 @@ def generar_pdf_cae_bytes(mes_firmado, lista_firmas_registradas):
     subtitulo_style = ParagraphStyle(
         'SubtituloLegal',
         parent=styles['Normal'],
-        fontSize=9,
-        leading=12,
+        fontSize=8.5,
+        leading=11,
         textColor=colors.HexColor('#2D3748'),
         alignment=4,
-        spaceAfter=15
+        spaceAfter=12
     )
 
     story.append(Paragraph("<b>SELECON, S.L. — CERTIFICADO DE OBLIGACIONES SALARIALES Y CAE</b>", titulo_style))
@@ -49,54 +49,60 @@ def generar_pdf_cae_bytes(mes_firmado, lista_firmas_registradas):
     capturada individualmente según la normativa vigente de Coordinación de Actividades Empresariales (CAE).
     """
     story.append(Paragraph(texto_declaracion, subtitulo_style))
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 5))
 
+    # Cabecera de la tabla
     data_tabla = [
         ["Nº", "Trabajador", "DNI", "Fecha / Auditoría IP", "Firma Digital"]
     ]
     
     celda_style = ParagraphStyle('CeldaTabla', fontSize=8, leading=10)
-    celda_hash_style = ParagraphStyle('CeldaHash', fontSize=6, leading=8, textColor=colors.HexColor('#4A5568'))
+    celda_hash_style = ParagraphStyle('CeldaHash', fontSize=6.5, leading=8, textColor=colors.HexColor('#4A5568'))
 
-    for idx, reg in enumerate(lista_firmas_registradas, start=1):
-        nombre = reg.get('nombre', 'Trabajador')
-        dni = reg.get('dni', '')
-        fecha = reg.get('fecha', '-')
-        ip = reg.get('ip', '-')
-        hash_val = reg.get('hash', '')[:16] + "..." if reg.get('hash') else ""
-        
-        img_element = "Pendiente"
-        if reg.get('firma') and reg['firma'].startswith('data:image'):
-            try:
-                base64_data = reg['firma'].split(',')[1]
-                img_data = base64.b64decode(base64_data)
-                img_stream = io.BytesIO(img_data)
-                img_element = Image(img_stream, width=90, height=30)
-            except Exception:
-                img_element = "Error Firma"
+    # Si no hay firmas registradas aún, genera una fila informativa para evitar crasheos
+    if not lista_firmas_registradas:
+        data_tabla.append(["-", "Sin registros de firma aún", "-", "-", "-"])
+    else:
+        for idx, reg in enumerate(lista_firmas_registradas, start=1):
+            nombre = reg.get('nombre', 'Trabajador')
+            dni = reg.get('dni', '')
+            fecha = reg.get('fecha', '-')
+            ip = reg.get('ip', '-')
+            hash_val = reg.get('hash', '')[:14] + "..." if reg.get('hash') else "-"
+            
+            img_element = "Pendiente"
+            if reg.get('firma') and isinstance(reg['firma'], str) and reg['firma'].startswith('data:image'):
+                try:
+                    base64_data = reg['firma'].split(',')[1]
+                    img_data = base64.b64decode(base64_data)
+                    img_stream = io.BytesIO(img_data)
+                    img_element = Image(img_stream, width=80, height=25)
+                except Exception:
+                    img_element = "Error Firma"
 
-        col_auditoria = Paragraph(f"<b>{fecha}</b><br>IP: {ip}<br><font color='#718096'>Hash: {hash_val}</font>", celda_hash_style)
-        
-        data_tabla.append([
-            str(idx),
-            Paragraph(f"<b>{nombre}</b>", celda_style),
-            dni,
-            col_auditoria,
-            img_element
-        ])
+            col_nombre = Paragraph(f"<b>{nombre}</b>", celda_style)
+            col_auditoria = Paragraph(f"<b>{fecha}</b><br/>IP: {ip}<br/><font color='#718096'>Hash: {hash_val}</font>", celda_hash_style)
+            
+            data_tabla.append([
+                str(idx),
+                col_nombre,
+                dni,
+                col_auditoria,
+                img_element
+            ])
 
-    tabla = Table(data_tabla, colWidths=[25, 150, 75, 175, 110])
+    tabla = Table(data_tabla, colWidths=[20, 145, 75, 180, 115])
     tabla.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1A365D')),
         ('TEXTCOLOR', (0,0), (-1,0), colors.white),
         ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0,0), (-1,0), 9),
+        ('FONTSIZE', (0,0), (-1,0), 8.5),
         ('ALIGN', (0,0), (-1,0), 'CENTER'),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
         ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E0')),
         ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#F7FAFC')]),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
-        ('TOPPADDING', (0,0), (-1,-1), 6),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ('TOPPADDING', (0,0), (-1,-1), 4),
     ]))
 
     story.append(tabla)
