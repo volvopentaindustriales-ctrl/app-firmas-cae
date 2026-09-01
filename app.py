@@ -45,4 +45,4 @@ def guardar_firma():
     return "<h2 style='text-align:center; color:green;'>¡Firma registrada con éxito! Puede cerrar esta pestaña.</h2>"
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000) 
