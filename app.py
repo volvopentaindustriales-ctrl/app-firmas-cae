@@ -2,11 +2,11 @@ import os
 import base64
 import hashlib
 import datetime
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, send_file
+from generador_pdf import generar_pdf_cae_bytes
 
 app = Flask(__name__)
 
-# BASE DE DATOS COMPLETA DE TRABAJADORES
 TRABAJADORES = {
     "77860653H": {"nombre": "Álvaro Arteaga Miranda", "dni": "77860653H"},
     "80103380S": {"nombre": "Antonio Bartolomé Salazar Giles", "dni": "80103380S"},
@@ -37,19 +37,16 @@ def obtener_mes_actual_texto():
     meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
              "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
     ahora = datetime.datetime.now()
-    # Por defecto toma el mes vencido (el mes pasado)
     mes_num = ahora.month - 1 if ahora.month > 1 else 12
     anio = ahora.year if ahora.month > 1 else ahora.year - 1
     return f"{meses[mes_num - 1]} {anio}"
 
 @app.route('/')
 def inicio():
-    return "Servidor de Firmas CAE Activo. Utilice su enlace personal con DNI."
+    return "Servidor de Firmas CAE Activo."
 
-# RUTA PRINCIPAL CON MES CONFIGURABLE
 @app.route('/firmar/<dni>')
 def firmar_individual(dni):
-    # Si le pasas ?mes=Enero 2025 en la URL se usará ese, de lo contrario usará el mes vencido por defecto
     mes_param = request.args.get('mes', obtener_mes_actual_texto())
     trabajador = TRABAJADORES.get(dni, {"nombre": "Trabajador", "dni": dni})
     return render_template('firmar.html', nombre=trabajador['nombre'], dni=trabajador['dni'], mes=mes_param)
@@ -57,7 +54,7 @@ def firmar_individual(dni):
 @app.route('/guardar_firma', methods=['POST'])
 def guardar_firma():
     dni = request.form.get('dni')
-    mes = request.form.get('mes', 'Mes Correspondiente')
+    mes = request.form.get('mes', obtener_mes_actual_texto())
     firma_base64 = request.form.get('imagen_firma')
     
     trabajador = TRABAJADORES.get(dni, {"nombre": "Trabajador"})
@@ -81,7 +78,7 @@ def guardar_firma():
         "firma": firma_base64
     })
     
-    return f"<h2 style='text-align:center; color:green; font-family:sans-serif; margin-top:50px;'>¡Firma del mes de {mes} registrada con éxito!<br><small style='color:#555;'>Su aceptación y datos de auditoría han sido guardados.</small></h2>"
+    return f"<h2 style='text-align:center; color:green; font-family:sans-serif; margin-top:50px;'>¡Firma del mes de {mes} registrada con éxito!</h2>"
 
 @app.route('/ver_firmas')
 def ver_firmas():
@@ -93,24 +90,25 @@ def ver_firmas():
         <title>Registro de Firmas CAE</title>
         <style>
             body { font-family: Arial, sans-serif; padding: 20px; background-color: #f8f9fa; }
-            h2 { color: #333; }
-            table { width: 100%; border-collapse: collapse; background: #fff; margin-top: 15px; }
+            .btn { background-color: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; margin-bottom: 15px; }
+            table { width: 100%; border-collapse: collapse; background: #fff; }
             th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 14px; }
             th { background-color: #007bff; color: white; }
-            img { max-height: 50px; border: 1px solid #ccc; background: #fff; }
+            img { max-height: 40px; }
         </style>
     </head>
     <body>
         <h2>Registro de Auditoría de Firmas CAE</h2>
+        <a href="/descargar_pdf" class="btn">📥 Descargar PDF Consolidado</a>
         <table>
             <tr>
                 <th>Fecha (UTC)</th>
-                <th>Mes Firmado</th>
+                <th>Mes</th>
                 <th>Nombre</th>
                 <th>DNI</th>
-                <th>Firma Trazada</th>
-                <th>IP Capturada</th>
-                <th>Hash SHA-256</th>
+                <th>Firma</th>
+                <th>IP</th>
+                <th>Hash</th>
             </tr>
     """
     for reg in REGISTRO_AUDITORIA:
@@ -122,15 +120,23 @@ def ver_firmas():
             <td>{reg['dni']}</td>
             <td><img src="{reg.get('firma', '')}" alt="Firma"></td>
             <td>{reg['ip']}</td>
-            <td><small>{reg['hash'][:20]}...</small></td>
+            <td><small>{reg['hash'][:15]}...</small></td>
         </tr>
         """
-    html += """
-        </table>
-    </body>
-    </html>
-    """
+    html += "</table></body></html>"
     return html
+
+@app.route('/descargar_pdf')
+def descargar_pdf():
+    mes = REGISTRO_AUDITORIA[0]['mes'] if REGISTRO_AUDITORIA else obtener_mes_actual_texto()
+    pdf_buffer = generar_pdf_cae_bytes(mes, REGISTRO_AUDITORIA)
+    
+    return send_file(
+        pdf_buffer,
+        as_attachment=True,
+        download_name=f"Certificado_CAE_Salarios_{mes.replace(' ', '_')}.pdf",
+        mimetype='application/pdf'
+    )
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
