@@ -2,34 +2,44 @@ import os
 import base64
 import hashlib
 import datetime
-from flask import Flask, render_template, request, redirect, send_file
+from flask import Flask, render_template, request, redirect
 
 app = Flask(__name__)
 
-# Lista simulada de trabajadores
+# Base de datos simulada de trabajadores (puedes ampliarla)
 TRABAJADORES = {
-    "12345678A": {"nombre": "Juan Pérez López", "dni": "12345678A", "firmado": False},
-    "87654321B": {"nombre": "Ana Gómez Martín", "dni": "87654321B", "firmado": False}
+    "12345678A": {"nombre": "Juan Pérez López", "dni": "12345678A"},
+    "87654321B": {"nombre": "Ana Gómez Martín", "dni": "87654321B"}
 }
 
 REGISTRO_AUDITORIA = []
 
 @app.route('/')
 def inicio():
-    return render_template('firmar.html')
+    return "Servidor de Firmas CAE Activo. Utilice su enlace personal con DNI."
 
-@app.route('/firmar', methods=['POST'])
+# RUTA NUEVA: Lee el DNI de la URL y abre firmar.html con sus datos
+@app.route('/firmar/<dni>')
+def firmar_individual(dni):
+    trabajador = TRABAJADORES.get(dni, {"nombre": "Trabajador", "dni": dni})
+    return render_template('firmar.html', nombre=trabajador['nombre'], dni=trabajador['dni'])
+
+# RUTA DE GUARDADO: Recibe el formulario de firmar.html
+@app.route('/guardar_firma', methods=['POST'])
 def guardar_firma():
-    nombre = request.form.get('nombre')
     dni = request.form.get('dni')
-    firma_base64 = request.form.get('firma_img')
+    firma_base64 = request.form.get('imagen_firma')
+    
+    # Busca el nombre asociado
+    trabajador = TRABAJADORES.get(dni, {"nombre": "Trabajador"})
+    nombre = trabajador.get('nombre')
     
     # Captura automática de auditoría IP y tiempo
     ip_cliente = request.headers.get('X-Forwarded-For', request.remote_addr)
     user_agent = request.headers.get('User-Agent')
     fecha_utc = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
     
-    # Hash de seguridad
+    # Hash de seguridad SHA-256
     cadena_bruta = f"{dni}-{fecha_utc}-{ip_cliente}"
     hash_auditoria = hashlib.sha256(cadena_bruta.encode()).hexdigest()
     
@@ -43,7 +53,7 @@ def guardar_firma():
         "firma": firma_base64
     })
     
-    return "<h2 style='text-align:center; color:green;'>¡Firma registrada con éxito! Puede cerrar esta pestaña.</h2>"
+    return "<h2 style='text-align:center; color:green; font-family:sans-serif; margin-top:50px;'>¡Firma registrada con éxito!<br><small style='color:#555;'>Su aceptación y datos de auditoría han sido guardados.</small></h2>"
 
 @app.route('/ver_firmas')
 def ver_firmas():
@@ -59,11 +69,11 @@ def ver_firmas():
             table { width: 100%; border-collapse: collapse; background: #fff; margin-top: 15px; }
             th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 14px; }
             th { background-color: #007bff; color: white; }
-            img { max-height: 60px; border: 1px solid #ccc; background: #fff; }
+            img { max-height: 50px; border: 1px solid #ccc; background: #fff; }
         </style>
     </head>
     <body>
-        <h2>Registro de Firmas de Auditoría CAE</h2>
+        <h2>Registro de Auditoría de Firmas CAE</h2>
         <table>
             <tr>
                 <th>Fecha (UTC)</th>
@@ -76,14 +86,14 @@ def ver_firmas():
     """
     for reg in REGISTRO_AUDITORIA:
         html += f"""
-            <tr>
-                <td>{reg['fecha']}</td>
-                <td>{reg['nombre']}</td>
-                <td>{reg['dni']}</td>
-                <td><img src="{reg.get('firma', '')}" alt="Firma"></td>
-                <td>{reg['ip']}</td>
-                <td><small>{reg['hash'][:20]}...</small></td>
-            </tr>
+        <tr>
+            <td>{reg['fecha']}</td>
+            <td>{reg['nombre']}</td>
+            <td>{reg['dni']}</td>
+            <td><img src="{reg.get('firma', '')}" alt="Firma"></td>
+            <td>{reg['ip']}</td>
+            <td><small>{reg['hash'][:20]}...</small></td>
+        </tr>
         """
     html += """
         </table>
@@ -94,11 +104,3 @@ def ver_firmas():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
-
-    @app.route('/ver_firmas')
-def ver_firmas():
-    html = "<h2>Registro CAE</h2><table border='1'><tr><th>Fecha</th><th>Nombre</th><th>DNI</th><th>Firma</th><th>IP</th></tr>"
-    for reg in REGISTRO_AUDITORIA:
-        html += f"<tr><td>{reg['fecha']}</td><td>{reg['nombre']}</td><td>{reg['dni']}</td><td><img src='{reg.get('firma','')}' height='50'></td><td>{reg['ip']}</td></tr>"
-    return html + "</table>"
-
