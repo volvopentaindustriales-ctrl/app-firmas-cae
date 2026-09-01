@@ -94,3 +94,11 @@ def ver_firmas():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+
+    @app.route('/ver_firmas')
+def ver_firmas():
+    html = "<h2>Registro CAE</h2><table border='1'><tr><th>Fecha</th><th>Nombre</th><th>DNI</th><th>Firma</th><th>IP</th></tr>"
+    for reg in REGISTRO_AUDITORIA:
+        html += f"<tr><td>{reg['fecha']}</td><td>{reg['nombre']}</td><td>{reg['dni']}</td><td><img src='{reg.get('firma','')}' height='50'></td><td>{reg['ip']}</td></tr>"
+    return html + "</table>"
+
