@@ -3,9 +3,15 @@ import base64
 import hashlib
 import datetime
 from flask import Flask, render_template, request, send_file
+from supabase import create_client, Client
 from generador_pdf import generar_pdf_cae_bytes
 
 app = Flask(__name__)
+
+# --- CONFIGURACIÓN SUPABASE ---
+SUPABASE_URL = "https://TU_PROYECTO.supabase.co"  # Reemplaza con tu URL
+SUPABASE_KEY = "TU_API_KEY_ANON"                 # Reemplaza con tu anon key
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 TRABAJADORES = {
     "77860653H": {"nombre": "Álvaro Arteaga Miranda", "dni": "77860653H"},
@@ -30,8 +36,6 @@ TRABAJADORES = {
     "77492245R": {"nombre": "Jesús Porras Rueda", "dni": "77492245R"},
     "26267627V": {"nombre": "Sergio Zotano Plaza", "dni": "26267627V"}
 }
-
-REGISTRO_AUDITORIA = []
 
 def obtener_mes_actual_texto():
     meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
@@ -67,21 +71,34 @@ def guardar_firma():
     cadena_bruta = f"{dni}-{mes}-{fecha_utc}-{ip_cliente}"
     hash_auditoria = hashlib.sha256(cadena_bruta.encode()).hexdigest()
     
-    REGISTRO_AUDITORIA.append({
+    # --- GUARDAR DIRECTAMENTE EN SUPABASE ---
+    datos_registro = {
         "dni": dni,
         "nombre": nombre,
         "mes": mes,
-        "fecha": fecha_utc,
+        "fecha_utc": fecha_utc,
         "ip": ip_cliente,
         "user_agent": user_agent,
-        "hash": hash_auditoria,
-        "firma": firma_base64
-    })
+        "hash_sha256": hash_auditoria,
+        "firma_base64": firma_base64
+    }
     
+    try:
+        supabase.table("registro_firmas").insert(datos_registro).execute()
+    except Exception as e:
+        print(f"Error guardando en Supabase: {e}")
+
     return f"<h2 style='text-align:center; color:green; font-family:sans-serif; margin-top:50px;'>¡Firma del mes de {mes} registrada con éxito!</h2>"
 
 @app.route('/ver_firmas')
 def ver_firmas():
+    # --- LEER DESDE SUPABASE ---
+    try:
+        respuesta = supabase.table("registro_firmas").select("*").order("id", desc=True).execute()
+        registros = respuesta.data
+    except Exception as e:
+        registros = []
+
     html = """
     <!DOCTYPE html>
     <html lang="es">
@@ -98,7 +115,7 @@ def ver_firmas():
         </style>
     </head>
     <body>
-        <h2>Registro de Auditoría de Firmas CAE</h2>
+        <h2>Registro de Auditoría de Firmas CAE (Persistente)</h2>
         <a href="/descargar_pdf" class="btn">📄 Descargar PDF Consolidado</a>
         <table>
             <tr>
@@ -111,16 +128,16 @@ def ver_firmas():
                 <th>Hash</th>
             </tr>
     """
-    for reg in REGISTRO_AUDITORIA:
+    for reg in registros:
         html += f"""
         <tr>
-            <td>{reg['fecha']}</td>
+            <td>{reg['fecha_utc']}</td>
             <td><b>{reg.get('mes', '-')}</b></td>
             <td>{reg['nombre']}</td>
             <td>{reg['dni']}</td>
-            <td><img src="{reg.get('firma', '')}" alt="Firma"></td>
+            <td><img src="{reg.get('firma_base64', '')}" alt="Firma"></td>
             <td>{reg['ip']}</td>
-            <td><small>{reg['hash'][:15]}...</small></td>
+            <td><small>{reg['hash_sha256'][:15]}...</small></td>
         </tr>
         """
     html += "</table></body></html>"
@@ -128,14 +145,28 @@ def ver_firmas():
 
 @app.route('/descargar_pdf')
 def descargar_pdf():
-    # Detecta el mes de las firmas o usa el mes actual por defecto sin crash
-    if len(REGISTRO_AUDITORIA) > 0:
-        mes = REGISTRO_AUDITORIA[0].get('mes', obtener_mes_actual_texto())
-    else:
-        mes = obtener_mes_actual_texto()
+    try:
+        respuesta = supabase.table("registro_firmas").select("*").order("id", desc=False).execute()
+        registros_bd = respuesta.data
+    except Exception:
+        registros_bd = []
+
+    # Adaptar claves de BD al formato que espera el generador de PDF
+    lista_para_pdf = []
+    for r in registros_bd:
+        lista_para_pdf.append({
+            "nombre": r.get('nombre'),
+            "dni": r.get('dni'),
+            "fecha": r.get('fecha_utc'),
+            "ip": r.get('ip'),
+            "hash": r.get('hash_sha256'),
+            "firma": r.get('firma_base64')
+        })
+
+    mes = registros_bd[0].get('mes', obtener_mes_actual_texto()) if registros_bd else obtener_mes_actual_texto()
     
     try:
-        pdf_buffer = generar_pdf_cae_bytes(mes, REGISTRO_AUDITORIA)
+        pdf_buffer = generar_pdf_cae_bytes(mes, lista_para_pdf)
         return send_file(
             pdf_buffer,
             as_attachment=True,
