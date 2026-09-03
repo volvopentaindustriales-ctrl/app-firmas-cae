@@ -9,8 +9,8 @@ from generador_pdf import generar_pdf_cae_bytes
 app = Flask(__name__)
 
 # --- CONFIGURACIÓN SUPABASE ---
-SUPABASE_URL = "https://ovfhnwejascrdivqdjvd.supabase.co"
-SUPABASE_KEY = "sb_publishable_01Wb6l61WUwztzqjON2HuA_-S8_07jp"
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://ovfhnwejascrdivqdjvd.supabase.co")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "sb_publishable_01Wb6l61WUwztzqjON2HuA_-S8_07jp")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 TRABAJADORES = {
@@ -41,9 +41,14 @@ def obtener_mes_actual_texto():
     meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
              "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
     ahora = datetime.datetime.now()
-    mes_num = ahora.month - 1 if ahora.month > 1 else 12
-    anio = ahora.year if ahora.month > 1 else ahora.year - 1
-    return f"{meses[mes_num - 1]} {anio}"
+    # Si estamos en enero (mes 1), el mes anterior es Diciembre (índice 11) del año anterior
+    if ahora.month == 1:
+        mes_idx = 11
+        anio = ahora.year - 1
+    else:
+        mes_idx = ahora.month - 2
+        anio = ahora.year
+    return f"{meses[mes_idx]} {anio}"
 
 @app.route('/')
 def inicio():
@@ -66,7 +71,7 @@ def guardar_firma():
     
     ip_cliente = request.headers.get('X-Forwarded-For', request.remote_addr)
     user_agent = request.headers.get('User-Agent')
-    fecha_utc = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    fecha_utc = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     
     cadena_bruta = f"{dni}-{mes}-{fecha_utc}-{ip_cliente}"
     hash_auditoria = hashlib.sha256(cadena_bruta.encode()).hexdigest()
@@ -129,13 +134,13 @@ def ver_firmas():
     for reg in registros:
         html += f"""
         <tr>
-            <td>{reg['fecha_utc']}</td>
+            <td>{reg.get('fecha_utc', '')}</td>
             <td><b>{reg.get('mes', '-')}</b></td>
-            <td>{reg['nombre']}</td>
-            <td>{reg['dni']}</td>
+            <td>{reg.get('nombre', '')}</td>
+            <td>{reg.get('dni', '')}</td>
             <td><img src="{reg.get('firma_base64', '')}" alt="Firma"></td>
-            <td>{reg['ip']}</td>
-            <td><small>{reg['hash_sha256'][:15]}...</small></td>
+            <td>{reg.get('ip', '')}</td>
+            <td><small>{reg.get('hash_sha256', '')[:15]}...</small></td>
         </tr>
         """
     html += "</table></body></html>"
@@ -174,4 +179,5 @@ def descargar_pdf():
         return f"<h3 style='color:red; text-align:center;'>Error al generar el PDF: {str(e)}</h3>"
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
