@@ -1,14 +1,15 @@
+import io
+import base64
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
-import base64
-import io
 
-def crear_pdf_cae(nombre_archivo, mes_firmado, lista_firmas_registradas):
-    # Configuración del documento en tamaño A4
+def generar_pdf_cae_bytes(mes_firmado, lista_firmas_registradas):
+    buffer = io.BytesIO()
+    
     doc = SimpleDocTemplate(
-        nombre_archivo,
+        buffer,
         pagesize=A4,
         rightMargin=30,
         leftMargin=30,
@@ -19,14 +20,13 @@ def crear_pdf_cae(nombre_archivo, mes_firmado, lista_firmas_registradas):
     story = []
     styles = getSampleStyleSheet()
     
-    # Estilos personalizados
     titulo_style = ParagraphStyle(
         'TituloEmpresa',
         parent=styles['Heading1'],
         fontSize=14,
         leading=16,
         textColor=colors.HexColor('#1A365D'),
-        alignment=1, # Centrado
+        alignment=1,
         spaceAfter=10
     )
     
@@ -36,11 +36,10 @@ def crear_pdf_cae(nombre_archivo, mes_firmado, lista_firmas_registradas):
         fontSize=9,
         leading=12,
         textColor=colors.HexColor('#2D3748'),
-        alignment=4, # Justificado
+        alignment=4,
         spaceAfter=15
     )
 
-    # 1. ENCABEZADO Y DECLARACIÓN LEGAL
     story.append(Paragraph("<b>SELECON, S.L. — CERTIFICADO DE OBLIGACIONES SALARIALES Y CAE</b>", titulo_style))
     
     texto_declaracion = f"""
@@ -52,13 +51,10 @@ def crear_pdf_cae(nombre_archivo, mes_firmado, lista_firmas_registradas):
     story.append(Paragraph(texto_declaracion, subtitulo_style))
     story.append(Spacer(1, 10))
 
-    # 2. CONSTRUCCIÓN DE LA TABLA DE FIRMAS
-    # Cabecera de la tabla
     data_tabla = [
-        ["Nº", "Trabajador", "DNI", "Fecha / Auditoría IP", "Firma Digital"]
+        ["Nº", "Trabajador", "DNI", "Fecha / Auditoría IP / Hash", "Firma Digital"]
     ]
     
-    # Estilo de párrafo para las celdas pequeñas
     celda_style = ParagraphStyle('CeldaTabla', fontSize=8, leading=10)
     celda_hash_style = ParagraphStyle('CeldaHash', fontSize=6, leading=8, textColor=colors.HexColor('#4A5568'))
 
@@ -67,9 +63,10 @@ def crear_pdf_cae(nombre_archivo, mes_firmado, lista_firmas_registradas):
         dni = reg.get('dni', '')
         fecha = reg.get('fecha', '-')
         ip = reg.get('ip', '-')
-        hash_val = reg.get('hash', '')[:16] + "..." if reg.get('hash') else ""
         
-        # Procesar la imagen PNG Base64 de la firma
+        # Muestra el Hash SHA-256 COMPLETO (64 caracteres) sin truncar con [:16]
+        hash_completo = reg.get('hash', '-')
+        
         img_element = "Pendiente"
         if reg.get('firma') and reg['firma'].startswith('data:image'):
             try:
@@ -78,9 +75,14 @@ def crear_pdf_cae(nombre_archivo, mes_firmado, lista_firmas_registradas):
                 img_stream = io.BytesIO(img_data)
                 img_element = Image(img_stream, width=90, height=30)
             except Exception:
-                img_element = "Error en Imagen"
+                img_element = "Error Firma"
 
-        col_auditoria = Paragraph(f"<b>{fecha}</b><br>IP: {ip}<br><font color='#718096'>Hash: {hash_val}</font>", celda_hash_style)
+        col_auditoria = Paragraph(
+            f"<b>{fecha}</b><br/>"
+            f"IP: {ip}<br/>"
+            f"<font color='#718096'><b>HASH:</b> {hash_completo}</font>", 
+            celda_hash_style
+        )
         
         data_tabla.append([
             str(idx),
@@ -90,8 +92,7 @@ def crear_pdf_cae(nombre_archivo, mes_firmado, lista_firmas_registradas):
             img_element
         ])
 
-    # Definición de anchos de columna (Total ~ 535px que cabe perfecto en A4)
-    tabla = Table(data_tabla, colWidths=[25, 150, 75, 175, 110])
+    tabla = Table(data_tabla, colWidths=[25, 140, 65, 195, 100])
     tabla.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1A365D')),
         ('TEXTCOLOR', (0,0), (-1,0), colors.white),
@@ -106,22 +107,7 @@ def crear_pdf_cae(nombre_archivo, mes_firmado, lista_firmas_registradas):
     ]))
 
     story.append(tabla)
-    
-    # Construir el documento
     doc.build(story)
-    print(f"✅ Documento PDF '{nombre_archivo}' generado con éxito.")
-
-# --- PRUEBA DE EJECUCIÓN ---
-if __name__ == "__main__":
-    # Ejemplo con firmas acumuladas de prueba
-    firmas_de_ejemplo = [
-        {
-            "nombre": "Álvaro Arteaga Miranda",
-            "dni": "77860653H",
-            "fecha": "2026-09-01 14:20:10 UTC",
-            "ip": "83.45.12.90",
-            "hash": "a1b2c3d4e5f67890123456789abcdef",
-            "firma": "" # Aquí va la imagen base64
-        }
-    ]
-    crear_pdf_cae("Certificado_Salarios_CAE.pdf", "Agosto 2026", firmas_de_ejemplo)
+    
+    buffer.seek(0)
+    return buffer
