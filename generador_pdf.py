@@ -86,7 +86,6 @@ def generar_pdf_cae_bytes(mes_firmado, lista_firmas_registradas):
             except Exception:
                 img_element = "Error Firma"
 
-        # Fijarse en la barra inclinada de la etiqueta <br/>
         col_trabajador = Paragraph(f"<b>{nombre}</b><br/><font color='#0D47A1'>DNI: {dni}</font>", celda_trabajador)
         col_auditoria = Paragraph(f"Fecha: <b>{fecha}</b> | IP: <b>{ip}</b><br/><font color='#78909C'>Hash: {hash_val}</font>", celda_hash_style)
         
@@ -112,6 +111,33 @@ def generar_pdf_cae_bytes(mes_firmado, lista_firmas_registradas):
     ]))
 
     story.append(tabla_firmas)
+    story.append(Spacer(1, 8))
+
+    # --- RECUADRO RESERVADO PARA SELLO PAdES / FNMT ---
+    estilo_pades = ParagraphStyle(
+        'TextoPades',
+        fontSize=6.5,
+        leading=8,
+        textColor=colors.HexColor('#37474F'),
+        alignment=1
+    )
+    
+    texto_pades = """
+    <b>ESPACIO RESERVADO PARA SELLADO DIGITAL PAdES (FNMT)</b><br/>
+    Documento emitido telemáticamente. Para dotar de validez legal según Reglamento (UE) Nº 910/2014 (eIDAS), 
+    proceda a estampar la firma digital cualificada con su certificado de representante FNMT.
+    """
+    
+    tabla_sello = Table([[Paragraph(texto_pades, estilo_pades)]], colWidths=[543])
+    tabla_sello.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#ECEFF1')),
+        ('BORDER', (0,0), (-1,-1), 1, colors.HexColor('#90A4AE')),
+        ('TOPPADDING', (0,0), (-1,-1), 4),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+    ]))
+    
+    story.append(tabla_sello)
+
     doc.build(story)
     
     buffer.seek(0)
