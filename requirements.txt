@@ -3,4 +3,5 @@ gunicorn==21.2.0
 reportlab
 Pillow
 supabase
-  
+pyhanko[pypdf,opentype]
+cryptography 
