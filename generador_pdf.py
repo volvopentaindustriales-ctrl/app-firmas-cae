@@ -63,25 +63,34 @@ def generar_pdf_cae_bytes(mes_firmado, lista_firmas_registradas):
         ["Nº", "Trabajador / DNI", "Auditoría Digital (Fecha, IP y Hash)", "Firma"]
     ]
     
-    # 3. Estilos de celda compactos
+    # Estilos de celda compactos
     celda_trabajador = ParagraphStyle('CeldaTrabajador', fontSize=7.5, leading=9, textColor=GRIS_TEXTO)
-    celda_hash_style = ParagraphStyle('CeldaHash', fontSize=6, leading=7.5, textColor=colors.HexColor('#546E7A'))
+    
+    # Estilo especial para Hash SHA-256 de 64 caracteres completo con salto automático de línea
+    celda_hash_style = ParagraphStyle(
+        'CeldaHash', 
+        fontSize=5.5, 
+        leading=7, 
+        textColor=colors.HexColor('#546E7A'),
+        wordBreak='break-all'
+    )
 
     for idx, reg in enumerate(lista_firmas_registradas, start=1):
         nombre = reg.get('nombre', 'Trabajador')
         dni = reg.get('dni', '')
         fecha = reg.get('fecha', '-')
         ip = reg.get('ip', '-')
-        hash_val = reg.get('hash', '')[:16] + "..." if reg.get('hash') else ""
         
-        # 2. Tamaño de imagen de firma ajustado
+        # HASH COMPLETO SIN TRUNCAR (64 caracteres)
+        hash_val = reg.get('hash', '')
+        
         img_element = "Pendiente"
         if reg.get('firma') and reg['firma'].startswith('data:image'):
             try:
                 base64_data = reg['firma'].split(',')[1]
                 img_data = base64.b64decode(base64_data)
                 img_stream = io.BytesIO(img_data)
-                img_element = Image(img_stream, width=70, height=18)  # Alto reducido a 18px
+                img_element = Image(img_stream, width=70, height=18)
             except Exception:
                 img_element = "Error Firma"
 
@@ -95,8 +104,8 @@ def generar_pdf_cae_bytes(mes_firmado, lista_firmas_registradas):
             img_element
         ])
 
-    # 4. Tabla compacta con padding mínimo
-    tabla_firmas = Table(data_tabla, colWidths=[18, 195, 220, 110])
+    # Tabla compacta con distribución de columnas optimizada para dar suficiente ancho al Hash
+    tabla_firmas = Table(data_tabla, colWidths=[18, 185, 230, 110])
     tabla_firmas.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), AZUL_SELECON),
         ('TEXTCOLOR', (0,0), (-1,0), colors.white),
@@ -106,8 +115,8 @@ def generar_pdf_cae_bytes(mes_firmado, lista_firmas_registradas):
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
         ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CFD8DC')),
         ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#F5F7FA')]),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 2),  # Padding reducido al mínimo
-        ('TOPPADDING', (0,0), (-1,-1), 2),     # Padding reducido al mínimo
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+        ('TOPPADDING', (0,0), (-1,-1), 2),
     ]))
 
     story.append(tabla_firmas)
