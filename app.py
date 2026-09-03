@@ -41,7 +41,6 @@ def obtener_mes_actual_texto():
     meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
              "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
     ahora = datetime.datetime.now()
-    # Si estamos en enero (mes 1), el mes anterior es Diciembre (índice 11) del año anterior
     if ahora.month == 1:
         mes_idx = 11
         anio = ahora.year - 1
@@ -115,6 +114,7 @@ def ver_firmas():
             th { background-color: #0D47A1; color: white; }
             img { max-height: 40px; }
             .btn { display: inline-block; padding: 10px 20px; background-color: #E65100; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; margin-bottom: 15px; }
+            .celda-hash { word-break: break-all; font-family: monospace; font-size: 11px; max-width: 250px; }
         </style>
     </head>
     <body>
@@ -128,7 +128,7 @@ def ver_firmas():
                 <th>DNI</th>
                 <th>Firma</th>
                 <th>IP</th>
-                <th>Hash</th>
+                <th>Hash SHA-256 (Completo)</th>
             </tr>
     """
     for reg in registros:
@@ -140,7 +140,7 @@ def ver_firmas():
             <td>{reg.get('dni', '')}</td>
             <td><img src="{reg.get('firma_base64', '')}" alt="Firma"></td>
             <td>{reg.get('ip', '')}</td>
-            <td><small>{reg.get('hash_sha256', '')[:15]}...</small></td>
+            <td class="celda-hash">{reg.get('hash_sha256', '')}</td>
         </tr>
         """
     html += "</table></body></html>"
