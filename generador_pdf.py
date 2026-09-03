@@ -12,7 +12,6 @@ GRIS_TEXTO = colors.HexColor('#263238')
 def generar_pdf_cae_bytes(mes_firmado, lista_firmas_registradas):
     buffer = io.BytesIO()
     
-    # 1. Márgenes reducidos del documento
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
@@ -25,14 +24,13 @@ def generar_pdf_cae_bytes(mes_firmado, lista_firmas_registradas):
     story = []
     styles = getSampleStyleSheet()
     
-    # Estilos de encabezado y cuerpo legal
     titulo_style = ParagraphStyle(
         'TituloEmpresa',
         parent=styles['Heading1'],
         fontSize=12,
         leading=14,
         textColor=AZUL_SELECON,
-        alignment=1, # Centrado
+        alignment=1,
         spaceAfter=6
     )
     
@@ -42,11 +40,10 @@ def generar_pdf_cae_bytes(mes_firmado, lista_firmas_registradas):
         fontSize=8,
         leading=10,
         textColor=GRIS_TEXTO,
-        alignment=4, # Justificado
+        alignment=4,
         spaceAfter=8
     )
 
-    # Encabezado y Declaración Legal
     story.append(Paragraph("<b>SELECON, S.L. — CERTIFICADO DE OBLIGACIONES SALARIALES Y CAE</b>", titulo_style))
     
     texto_declaracion = f"""
@@ -58,15 +55,12 @@ def generar_pdf_cae_bytes(mes_firmado, lista_firmas_registradas):
     story.append(Paragraph(texto_declaracion, subtitulo_style))
     story.append(Spacer(1, 4))
 
-    # Construcción de la tabla de firmas
     data_tabla = [
         ["Nº", "Trabajador / DNI", "Auditoría Digital (Fecha, IP y Hash)", "Firma"]
     ]
     
-    # Estilos de celda compactos
     celda_trabajador = ParagraphStyle('CeldaTrabajador', fontSize=7.5, leading=9, textColor=GRIS_TEXTO)
     
-    # Estilo especial para Hash SHA-256 de 64 caracteres completo con salto automático de línea
     celda_hash_style = ParagraphStyle(
         'CeldaHash', 
         fontSize=5.5, 
@@ -80,8 +74,6 @@ def generar_pdf_cae_bytes(mes_firmado, lista_firmas_registradas):
         dni = reg.get('dni', '')
         fecha = reg.get('fecha', '-')
         ip = reg.get('ip', '-')
-        
-        # HASH COMPLETO SIN TRUNCAR (64 caracteres)
         hash_val = reg.get('hash', '')
         
         img_element = "Pendiente"
@@ -94,8 +86,9 @@ def generar_pdf_cae_bytes(mes_firmado, lista_firmas_registradas):
             except Exception:
                 img_element = "Error Firma"
 
-        col_trabajador = Paragraph(f"<b>{nombre}</b><br><font color='#0D47A1'>DNI: {dni}</font>", celda_trabajador)
-        col_auditoria = Paragraph(f"Fecha: <b>{fecha}</b> | IP: <b>{ip}</b><br><font color='#78909C'>Hash: {hash_val}</font>", celda_hash_style)
+        # Fijarse en la barra inclinada de la etiqueta <br/>
+        col_trabajador = Paragraph(f"<b>{nombre}</b><br/><font color='#0D47A1'>DNI: {dni}</font>", celda_trabajador)
+        col_auditoria = Paragraph(f"Fecha: <b>{fecha}</b> | IP: <b>{ip}</b><br/><font color='#78909C'>Hash: {hash_val}</font>", celda_hash_style)
         
         data_tabla.append([
             str(idx),
@@ -104,7 +97,6 @@ def generar_pdf_cae_bytes(mes_firmado, lista_firmas_registradas):
             img_element
         ])
 
-    # Tabla compacta con distribución de columnas optimizada para dar suficiente ancho al Hash
     tabla_firmas = Table(data_tabla, colWidths=[18, 185, 230, 110])
     tabla_firmas.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), AZUL_SELECON),
