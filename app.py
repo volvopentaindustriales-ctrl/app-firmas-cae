@@ -116,11 +116,7 @@ def guardar_firma():
 
     return f"<h2 style='text-align:center; color:green; font-family:sans-serif; margin-top:50px;'>¡Firma del mes de {mes} registrada con éxito!</h2>"
         supabase.table("registro_firmas").insert(datos_registro).execute()
-    except Exception as e:
-        print(f"Error guardando en Supabase: {e}")
-
-    return f"<h2 style='text-align:center; color:green; font-family:sans-serif; margin-top:50px;'>¡Firma del mes de {mes} registrada con éxito!</h2>"
-
+    
 
 @app.route('/ver_firmas')
 def ver_firmas():
