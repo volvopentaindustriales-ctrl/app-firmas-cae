@@ -3,6 +3,8 @@ import base64
 import hashlib
 import datetime
 import csv
+import zoneinfo
+
 from flask import Flask, render_template, request, send_file
 from supabase import create_client, Client
 from generador_pdf import generar_pdf_cae_bytes
@@ -76,6 +78,7 @@ def firmar_individual(dni):
 
 
 @app.route('/guardar_firma', methods=['POST'])
+@app.route('/guardar_firma', methods=['POST'])
 def guardar_firma():
     dni = request.form.get('dni')
     mes = request.form.get('mes', obtener_mes_actual_texto())
@@ -87,7 +90,10 @@ def guardar_firma():
     
     ip_cliente = request.headers.get('X-Forwarded-For', request.remote_addr)
     user_agent = request.headers.get('User-Agent')
-    fecha_utc = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    
+    # --- FECHA EN HORA OFICIAL DE ESPAÑA ---
+    zona_madrid = zoneinfo.ZoneInfo("Europe/Madrid")
+    fecha_utc = datetime.datetime.now(zona_madrid).strftime("%Y-%m-%d %H:%M:%S CEST")
     
     cadena_bruta = f"{dni}-{mes}-{fecha_utc}-{ip_cliente}"
     hash_auditoria = hashlib.sha256(cadena_bruta.encode()).hexdigest()
@@ -96,7 +102,7 @@ def guardar_firma():
         "dni": dni,
         "nombre": nombre,
         "mes": mes,
-        "fecha_utc": fecha_utc,
+        "fecha_utc": fecha_utc, # Mantiene el nombre de la columna en Supabase
         "ip": ip_cliente,
         "user_agent": user_agent,
         "hash_sha256": hash_auditoria,
@@ -104,6 +110,11 @@ def guardar_firma():
     }
     
     try:
+        supabase.table("registro_firmas").insert(datos_registro).execute()
+    except Exception as e:
+        print(f"Error guardando en Supabase: {e}")
+
+    return f"<h2 style='text-align:center; color:green; font-family:sans-serif; margin-top:50px;'>¡Firma del mes de {mes} registrada con éxito!</h2>"
         supabase.table("registro_firmas").insert(datos_registro).execute()
     except Exception as e:
         print(f"Error guardando en Supabase: {e}")
